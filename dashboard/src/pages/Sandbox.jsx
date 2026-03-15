@@ -36,7 +36,7 @@ export default function Sandbox() {
 
   // Load available indicators on mount
   useEffect(() => {
-    axios.get(`${API_BASE}}/api/sandbox/indicators`)
+    axios.get(`${API_BASE}/api/sandbox/indicators`)
       .then(res => setIndicators(res.data))
       .catch(() => {})
   }, [])
