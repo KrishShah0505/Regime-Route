@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
-
+import API_BASE from "../api/client"
 const REGIME_COLORS = {
   emerald: {
     bg:     "bg-emerald-900/20",
@@ -37,7 +37,7 @@ export default function LiveRegime() {
   const [error, setError]     = useState(null)
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/api/live")
+    axios.get(`${API_BASE}/api/live`)
       .then(res => {
         setData(res.data)
         setLoading(false)

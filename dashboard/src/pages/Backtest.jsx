@@ -1,6 +1,6 @@
 import { useState } from "react"
 import axios from "axios"
-
+import API_BASE from "../api/client"
 const DEFAULT_TICKERS = "AAPL,MSFT,GOOGL,AMZN,META,NVDA,JPM,BAC,XOM,JNJ"
 
 export default function Backtest({ onResult }) {
@@ -16,7 +16,7 @@ export default function Backtest({ onResult }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/backtest", {
+      const res = await axios.post(`${API_BASE}/api/backtest`, {
         tickers: tickers.split(",").map(t => t.trim()),
         start_date: startDate,
         end_date: endDate,

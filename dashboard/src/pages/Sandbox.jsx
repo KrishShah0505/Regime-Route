@@ -3,7 +3,7 @@ import axios from "axios"
 import MonteCarloChart from "../components/MonteCarloChart"
 import PnLCurve from "../components/PnLCurve"
 import RiskMetrics from "../components/RiskMetrics"
-
+import API_BASE from "../api/client"
 const OPERATORS = ["<", ">", "<=", ">=", "=="]
 const ACTIONS = ["buy", "sell"]
 const REGIME_OPTIONS = [
@@ -36,7 +36,7 @@ export default function Sandbox() {
 
   // Load available indicators on mount
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/api/sandbox/indicators")
+    axios.get(`${API_BASE}}/api/sandbox/indicators`)
       .then(res => setIndicators(res.data))
       .catch(() => {})
   }, [])
@@ -65,7 +65,7 @@ export default function Sandbox() {
     setResult(null)
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/sandbox", {
+      const res = await axios.post(`${API_BASE}/api/sandbox`, {
         tickers:       tickers.split(",").map(t => t.trim()),
         start_date:    startDate,
         end_date:      endDate,
