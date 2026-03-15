@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.db
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.env
+
+# IDE
+.vscode/
+.idea/
+*.DS_Store
+
+# Data cache
+data/cache/
+*.parquet
+*.csv
