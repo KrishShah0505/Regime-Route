@@ -4,6 +4,7 @@ import MonteCarloChart from "../components/MonteCarloChart"
 import PnLCurve from "../components/PnLCurve"
 import RiskMetrics from "../components/RiskMetrics"
 import API_BASE from "../api/client"
+
 const OPERATORS = ["<", ">", "<=", ">=", "=="]
 const ACTIONS = ["buy", "sell"]
 const REGIME_OPTIONS = [
@@ -16,8 +17,8 @@ const REGIME_OPTIONS = [
 const DEFAULT_TICKERS = "AAPL,MSFT,GOOGL,AMZN,META,NVDA,JPM,BAC,XOM,JNJ"
 
 const DEFAULT_RULES = [
-  { indicator: "rsi",     operator: "<",  value: 30,  action: "buy"  },
-  { indicator: "rsi",     operator: ">",  value: 70,  action: "sell" },
+  { indicator: "rsi", operator: "<", value: 30,  action: "buy"  },
+  { indicator: "rsi", operator: ">", value: 70,  action: "sell" },
 ]
 
 export default function Sandbox() {
@@ -34,7 +35,6 @@ export default function Sandbox() {
   const [error, setError]           = useState(null)
   const [result, setResult]         = useState(null)
 
-  // Load available indicators on mount
   useEffect(() => {
     axios.get(`${API_BASE}/api/sandbox/indicators`)
       .then(res => setIndicators(res.data))
@@ -52,9 +52,15 @@ export default function Sandbox() {
   }
 
   const updateRule = (i, field, value) => {
-    setRules(r => r.map((rule, idx) =>
-      idx === i ? { ...rule, [field]: value } : rule
-    ))
+    setRules(r => r.map((rule, idx) => {
+      if (idx !== i) return rule
+      // When indicator changes, auto-populate value with its default
+      if (field === "indicator") {
+        const ind = indicators.find(ind => ind.id === value)
+        return { ...rule, indicator: value, value: ind?.default_value ?? 0 }
+      }
+      return { ...rule, [field]: value }
+    }))
   }
 
   // ── Run ──────────────────────────────────────────────────────────────────
@@ -208,69 +214,79 @@ export default function Sandbox() {
 
             {/* Rules */}
             <div className="flex flex-col gap-3">
-              {rules.map((rule, i) => (
-                <div key={i} className="flex items-center gap-2 bg-gray-800 rounded-lg p-3">
+              {rules.map((rule, i) => {
+                const indMeta = indicators.find(ind => ind.id === rule.indicator)
+                return (
+                  <div key={i} className="flex items-start gap-2 bg-gray-800 rounded-lg p-3">
 
-                  {/* IF label */}
-                  <span className="text-xs text-gray-500 w-6 shrink-0">
-                    {i === 0 ? "IF" : "AND"}
-                  </span>
+                    {/* IF label */}
+                    <span className="text-xs text-gray-500 w-6 shrink-0 pt-2">
+                      {i === 0 ? "IF" : "AND"}
+                    </span>
 
-                  {/* Indicator */}
-                  <select
-                    className="bg-gray-700 rounded px-2 py-1.5 text-sm flex-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    value={rule.indicator}
-                    onChange={e => updateRule(i, "indicator", e.target.value)}
-                  >
-                    {indicators.map(ind => (
-                      <option key={ind.id} value={ind.id}>{ind.label}</option>
-                    ))}
-                  </select>
+                    {/* Indicator */}
+                    <select
+                      className="bg-gray-700 rounded px-2 py-1.5 text-sm flex-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={rule.indicator}
+                      onChange={e => updateRule(i, "indicator", e.target.value)}
+                    >
+                      {indicators.map(ind => (
+                        <option key={ind.id} value={ind.id}>{ind.label}</option>
+                      ))}
+                    </select>
 
-                  {/* Operator */}
-                  <select
-                    className="bg-gray-700 rounded px-2 py-1.5 text-sm w-16 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    value={rule.operator}
-                    onChange={e => updateRule(i, "operator", e.target.value)}
-                  >
-                    {OPERATORS.map(op => (
-                      <option key={op} value={op}>{op}</option>
-                    ))}
-                  </select>
+                    {/* Operator */}
+                    <select
+                      className="bg-gray-700 rounded px-2 py-1.5 text-sm w-16 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={rule.operator}
+                      onChange={e => updateRule(i, "operator", e.target.value)}
+                    >
+                      {OPERATORS.map(op => (
+                        <option key={op} value={op}>{op}</option>
+                      ))}
+                    </select>
 
-                  {/* Value */}
-                  <input
-                    type="number"
-                    className="bg-gray-700 rounded px-2 py-1.5 text-sm w-20 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    value={rule.value}
-                    onChange={e => updateRule(i, "value", e.target.value)}
-                  />
+                    {/* Value + Range hint */}
+                    <div className="flex flex-col w-20">
+                      <input
+                        type="number"
+                        className="bg-gray-700 rounded px-2 py-1.5 text-sm w-full focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        value={rule.value}
+                        onChange={e => updateRule(i, "value", e.target.value)}
+                      />
+                      {indMeta?.range && (
+                        <span className="text-xs text-gray-600 mt-0.5 text-center">
+                          {indMeta.range[0]}–{indMeta.range[1]}
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Action */}
-                  <select
-                    className={`rounded px-2 py-1.5 text-sm w-16 focus:outline-none focus:ring-1 ${
-                      rule.action === "buy"
-                        ? "bg-emerald-900 text-emerald-300 focus:ring-emerald-500"
-                        : "bg-red-900 text-red-300 focus:ring-red-500"
-                    }`}
-                    value={rule.action}
-                    onChange={e => updateRule(i, "action", e.target.value)}
-                  >
-                    {ACTIONS.map(a => (
-                      <option key={a} value={a}>{a.toUpperCase()}</option>
-                    ))}
-                  </select>
+                    {/* Action */}
+                    <select
+                      className={`rounded px-2 py-1.5 text-sm w-16 focus:outline-none focus:ring-1 ${
+                        rule.action === "buy"
+                          ? "bg-emerald-900 text-emerald-300 focus:ring-emerald-500"
+                          : "bg-red-900 text-red-300 focus:ring-red-500"
+                      }`}
+                      value={rule.action}
+                      onChange={e => updateRule(i, "action", e.target.value)}
+                    >
+                      {ACTIONS.map(a => (
+                        <option key={a} value={a}>{a.toUpperCase()}</option>
+                      ))}
+                    </select>
 
-                  {/* Remove */}
-                  <button
-                    onClick={() => removeRule(i)}
-                    className="text-gray-600 hover:text-red-400 text-lg leading-none ml-1"
-                  >
-                    ×
-                  </button>
+                    {/* Remove */}
+                    <button
+                      onClick={() => removeRule(i)}
+                      className="text-gray-600 hover:text-red-400 text-lg leading-none ml-1 pt-1"
+                    >
+                      ×
+                    </button>
 
-                </div>
-              ))}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Rule preview */}
@@ -316,35 +332,32 @@ export default function Sandbox() {
       {result?.status === "success" && (
         <div className="flex flex-col gap-6">
 
-          {/* Metrics */}
           <RiskMetrics result={result} />
 
-          {/* Equity Curve */}
           <div className="bg-gray-900 rounded-xl p-6">
             <h2 className="text-sm font-semibold text-gray-400 mb-4">EQUITY CURVE</h2>
             <PnLCurve data={result.equity_curve} capital={result.initial_capital} />
           </div>
 
-          {/* Monte Carlo */}
-        {result.monte_carlo && (
-  result.monte_carlo.error ? (
-    <div className="bg-gray-900 rounded-xl p-6">
-      <h2 className="text-sm font-semibold text-gray-400 mb-2">MONTE CARLO VALIDATION</h2>
-      <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg px-4 py-3 text-sm text-yellow-300">
-        {result.monte_carlo.error} — {result.monte_carlo.n_trades} trades extracted.
-        Try a larger universe or longer date range for more trades.
-      </div>
-    </div>
-  ) : (
-    <div className="bg-gray-900 rounded-xl p-6">
-      <h2 className="text-sm font-semibold text-gray-400 mb-1">MONTE CARLO VALIDATION</h2>
-      <p className="text-xs text-gray-500 mb-4">
-        Your strategy vs {result.monte_carlo.n_simulations.toLocaleString()} random simulations of the same trades
-      </p>
-      <MonteCarloChart data={result.monte_carlo} />
-    </div>
-  )
-)}
+          {result.monte_carlo && (
+            result.monte_carlo.error ? (
+              <div className="bg-gray-900 rounded-xl p-6">
+                <h2 className="text-sm font-semibold text-gray-400 mb-2">MONTE CARLO VALIDATION</h2>
+                <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg px-4 py-3 text-sm text-yellow-300">
+                  {result.monte_carlo.error} — {result.monte_carlo.n_trades} trades extracted.
+                  Try a larger universe or longer date range for more trades.
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-900 rounded-xl p-6">
+                <h2 className="text-sm font-semibold text-gray-400 mb-1">MONTE CARLO VALIDATION</h2>
+                <p className="text-xs text-gray-500 mb-4">
+                  Your strategy vs {result.monte_carlo.n_simulations.toLocaleString()} random simulations of the same trades
+                </p>
+                <MonteCarloChart data={result.monte_carlo} />
+              </div>
+            )
+          )}
 
         </div>
       )}

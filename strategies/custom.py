@@ -117,6 +117,17 @@ class CustomStrategy:
                     f"Unknown action: {rule['action']}. Valid: buy, sell"
                 )
 
+    def _get_values(self, rule, features, index, columns, n_tickers):
+        """Extract indicator values as (n_days, n_tickers) numpy array."""
+        indicator_fn = INDICATOR_MAP[rule["indicator"]]
+        raw = indicator_fn(features)
+        if isinstance(raw, pd.DataFrame):
+            return raw.reindex(index=index, columns=columns).ffill().values
+        elif isinstance(raw, pd.Series):
+            return raw.reindex(index).ffill().values[:, None] * np.ones((1, n_tickers))
+        else:
+            return raw
+
     def generate_signals(
         self,
         features: dict,
@@ -125,68 +136,54 @@ class CustomStrategy:
         """
         Compile rules into weight DataFrame.
 
-        Steps:
-            1. Compute each indicator across all tickers
-            2. Apply operator to get boolean mask per rule
-            3. AND all buy conditions → buy signal
-            4. AND all sell conditions → sell signal
-            5. buy=+1, sell=-1, conflict/neither=0
-            6. Apply regime filter if set
-            7. Apply position sizing
+        KEY FIX: Buy rules and sell rules are processed independently.
+        Buy conditions are ANDed only with other buy conditions.
+        Sell conditions are ANDed only with other sell conditions.
+        The two masks never mix during construction.
 
         Returns
         -------
         pd.DataFrame shape (n_days, n_tickers) — portfolio weights
         """
-        index   = features["close"].index
-        columns = features["close"].columns
-        n_days  = len(index)
+        index     = features["close"].index
+        columns   = features["close"].columns
+        n_days    = len(index)
         n_tickers = len(columns)
 
-        # Start with all True masks — AND conditions together
-        buy_mask  = np.ones((n_days, n_tickers), dtype=bool)
-        sell_mask = np.ones((n_days, n_tickers), dtype=bool)
+        # Separate rules by action type
+        buy_rules  = [r for r in self.rules if r["action"] == "buy"]
+        sell_rules = [r for r in self.rules if r["action"] == "sell"]
 
-        has_buy  = any(r["action"] == "buy"  for r in self.rules)
-        has_sell = any(r["action"] == "sell" for r in self.rules)
+        # ── Buy mask — AND all buy conditions independently ───────────────
+        if buy_rules:
+            buy_mask = np.ones((n_days, n_tickers), dtype=bool)
+            for rule in buy_rules:
+                operator_fn = OPERATOR_MAP[rule["operator"]]
+                values      = self._get_values(rule, features, index, columns, n_tickers)
+                buy_mask    = buy_mask & operator_fn(values, float(rule["value"]))
+        else:
+            buy_mask = np.zeros((n_days, n_tickers), dtype=bool)
 
-        # Reset to False if no rules of that type
-        if not has_buy:
-            buy_mask[:] = False
-        if not has_sell:
-            sell_mask[:] = False
+        # ── Sell mask — AND all sell conditions independently ─────────────
+        if sell_rules:
+            sell_mask = np.ones((n_days, n_tickers), dtype=bool)
+            for rule in sell_rules:
+                operator_fn = OPERATOR_MAP[rule["operator"]]
+                values      = self._get_values(rule, features, index, columns, n_tickers)
+                sell_mask   = sell_mask & operator_fn(values, float(rule["value"]))
+        else:
+            sell_mask = np.zeros((n_days, n_tickers), dtype=bool)
 
-        for rule in self.rules:
-            indicator_fn = INDICATOR_MAP[rule["indicator"]]
-            operator_fn  = OPERATOR_MAP[rule["operator"]]
-
-            # Get indicator values — shape (n_days, n_tickers)
-            raw = indicator_fn(features)
-            if isinstance(raw, pd.DataFrame):
-                values = raw.reindex(index=index, columns=columns).ffill().values
-            elif isinstance(raw, pd.Series):
-                values = raw.reindex(index).ffill().values[:, None] * np.ones((1, n_tickers))
-            else:
-                values = raw
-
-            # Apply condition
-            condition = operator_fn(values, float(rule["value"]))
-
-            if rule["action"] == "buy":
-                buy_mask  = buy_mask  & condition
-            else:
-                sell_mask = sell_mask & condition
-
-        # Build signal matrix
+        # ── Build signal matrix ───────────────────────────────────────────
         # Buy = +1, Sell = -1, Both/Neither = 0
         signals = np.zeros((n_days, n_tickers))
         signals[buy_mask  & ~sell_mask] =  self.position_size
         signals[sell_mask & ~buy_mask]  = -self.position_size if self.allow_short else 0
 
-        # Apply regime filter — zero out days outside target regime
+        # ── Apply regime filter ───────────────────────────────────────────
         if self.regime_filter is not None:
             regime_mask = (regimes == self.regime_filter)[:, None]
-            signals = signals * regime_mask
+            signals     = signals * regime_mask
 
         weights = pd.DataFrame(signals, index=index, columns=columns)
         return weights
@@ -210,7 +207,7 @@ def _compute_rsi(close: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     rs  = avg_gain / avg_loss.replace(0, np.nan)
     rsi = 100 - (100 / (1 + rs))
 
-    return rsi.fillna(50)  # fill NaN with neutral 50
+    return rsi.fillna(50)
 
 
 # ── Available Indicators For UI ───────────────────────────────────────────────
@@ -218,14 +215,14 @@ def _compute_rsi(close: pd.DataFrame, period: int = 14) -> pd.DataFrame:
 def get_available_indicators() -> list:
     """Return indicator metadata for the frontend rule builder."""
     return [
-        {"id": "rsi",          "label": "RSI",              "default_value": 30,   "range": [0, 100]},
-        {"id": "price",        "label": "Price ($)",         "default_value": 100,  "range": [0, 10000]},
-        {"id": "ema_50",       "label": "EMA 50",            "default_value": 100,  "range": [0, 10000]},
-        {"id": "ema_200",      "label": "EMA 200",           "default_value": 100,  "range": [0, 10000]},
-        {"id": "bb_zscore",    "label": "BB Z-Score",        "default_value": -2,   "range": [-4, 4]},
-        {"id": "momentum",     "label": "12M Momentum",      "default_value": 0,    "range": [-1, 2]},
-        {"id": "volume_ratio", "label": "Volume Ratio",      "default_value": 1.5,  "range": [0, 5]},
-        {"id": "vix",          "label": "VIX Level",         "default_value": 20,   "range": [5, 80]},
-        {"id": "vix_zscore",   "label": "VIX Z-Score",       "default_value": 0,    "range": [-3, 3]},
-        {"id": "returns",      "label": "Daily Return",      "default_value": 0,    "range": [-0.1, 0.1]},
+        {"id": "rsi",          "label": "RSI",            "default_value": 30,    "range": [0, 100]},
+        {"id": "price",        "label": "Price ($)",       "default_value": 150,   "range": [1, 10000]},
+        {"id": "ema_50",       "label": "EMA 50",          "default_value": 150,   "range": [1, 10000]},
+        {"id": "ema_200",      "label": "EMA 200",         "default_value": 150,   "range": [1, 10000]},
+        {"id": "bb_zscore",    "label": "BB Z-Score",      "default_value": -2.0,  "range": [-4, 4]},
+        {"id": "momentum",     "label": "12M Momentum",    "default_value": 0.0,   "range": [-0.5, 2.0]},
+        {"id": "volume_ratio", "label": "Volume Ratio",    "default_value": 1.5,   "range": [0, 5]},
+        {"id": "vix",          "label": "VIX Level",       "default_value": 20,    "range": [5, 80]},
+        {"id": "vix_zscore",   "label": "VIX Z-Score",     "default_value": 0.0,   "range": [-3, 3]},
+        {"id": "returns",      "label": "Daily Return",    "default_value": 0.01,  "range": [-0.1, 0.1]},
     ]
