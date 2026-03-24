@@ -16,6 +16,7 @@ export default function Backtest({ onResult }) {
   { value: "mean_reversion", label: "Mean Reversion (Bollinger)" },
   { value: "trend_filter",   label: "EMA Trend Filter" },
   { value: "rsi_divergence", label: "RSI Divergence" },
+  {value: "circuit_breaker",label: "Circuit Breaker(Go Flat)"},
 ]
 
 const REGIME_LABELS = {
@@ -25,7 +26,7 @@ const REGIME_LABELS = {
 }
   const [regimeMap, setRegimeMap] = useState({
   0: "momentum",
-  1: "mean_reversion", 
+  1: "circuit_breaker", 
   2: "trend_filter",
 })
   const run = async () => {

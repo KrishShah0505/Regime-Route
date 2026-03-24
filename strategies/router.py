@@ -26,6 +26,7 @@ from strategies.momentum import MomentumStrategy
 from strategies.mean_reversion import MeanReversionStrategy
 from strategies.trend_filter import TrendFilterStrategy
 from strategies.rsi_divergence import RSIDivergenceStrategy
+from strategies.circuit_breaker import CircuitBreakerStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ STRATEGY_REGISTRY = {
     "trend_filter":   TrendFilterStrategy,
     # Future additions:
     "rsi_divergence":     RSIDivergenceStrategy,
+    "circuit_breaker":CircuitBreakerStrategy,
     # "breakout":           BreakoutStrategy,
     # "pairs_trading":      PairsTradingStrategy,
 }
@@ -48,7 +50,7 @@ STRATEGY_REGISTRY = {
 
 DEFAULT_REGIME_MAP = {
     0: "momentum",         # Low vol  → Momentum
-    1: "mean_reversion",   # High vol → Mean Reversion
+    1: "circuit_breaker",   # High vol → Mean Reversion
     2: "trend_filter",     # Transit  → Trend Filter
 }
 
@@ -191,10 +193,7 @@ class RegimeRouter:
             self.regime_map.get(r, "?"): int((regimes == r).sum())
             for r in np.unique(regimes)
         }
-        # Apply circuit breaker — reduce exposure in High Vol regime
-        composite_weights = self._apply_circuit_breaker(
-            composite_weights, regimes
-        )
+       
 
         logger.info(f"Signal generation complete | Regime days: {regime_counts}")
 
