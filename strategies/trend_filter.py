@@ -147,3 +147,5 @@ class TrendFilterStrategy(BaseStrategy):
         weights = weights * scalar
 
         return weights
+
+

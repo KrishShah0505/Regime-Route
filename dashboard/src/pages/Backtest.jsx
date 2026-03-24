@@ -11,7 +11,23 @@ export default function Backtest({ onResult }) {
   const [method, setMethod] = useState("hmm")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const STRATEGIES = [
+  { value: "momentum",       label: "Time-Series Momentum" },
+  { value: "mean_reversion", label: "Mean Reversion (Bollinger)" },
+  { value: "trend_filter",   label: "EMA Trend Filter" },
+  { value: "rsi_divergence", label: "RSI Divergence" },
+]
 
+const REGIME_LABELS = {
+  0: "🟢 Low Vol",
+  1: "🔴 High Vol",
+  2: "🟡 Transitional",
+}
+  const [regimeMap, setRegimeMap] = useState({
+  0: "momentum",
+  1: "mean_reversion", 
+  2: "trend_filter",
+})
   const run = async () => {
     setLoading(true)
     setError(null)
@@ -26,6 +42,7 @@ export default function Backtest({ onResult }) {
         allow_short: true,
         rebalance_frequency: "daily",
         regime_method: method,
+        regime_map:regimeMap,
       })
       localStorage.setItem("lastResult", JSON.stringify(res.data))
       onResult()
@@ -107,7 +124,30 @@ export default function Backtest({ onResult }) {
             {error}
           </div>
         )}
-
+        {/* Regime Strategy Map */}
+<div>
+  <label className="text-xs text-gray-400 mb-2 block">
+    Regime → Strategy Map
+  </label>
+  <div className="flex flex-col gap-2">
+    {[0, 1, 2].map(regime => (
+      <div key={regime} className="flex items-center gap-3">
+        <span className="text-xs text-gray-400 w-28 shrink-0">
+          {REGIME_LABELS[regime]}
+        </span>
+        <select
+          className="flex-1 bg-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          value={regimeMap[regime]}
+          onChange={e => setRegimeMap(m => ({ ...m, [regime]: e.target.value }))}
+        >
+          {STRATEGIES.map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+    ))}
+  </div>
+</div>
         {/* Submit */}
         <button
           onClick={run}
