@@ -17,6 +17,8 @@ export default function Backtest({ onResult }) {
   { value: "trend_filter",   label: "EMA Trend Filter" },
   { value: "rsi_divergence", label: "RSI Divergence" },
   {value: "circuit_breaker",label: "Circuit Breaker(Go Flat)"},
+  { value: "breakout",        label: "Volatility Breakout" },
+  { value: "pairs_trading",   label: "Pairs Trading" },
 ]
 
 const REGIME_LABELS = {

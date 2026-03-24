@@ -156,6 +156,7 @@ async def run_backtest(request: BacktestRequest):
             "comparison_table":    comparison_table,
             "comparison_chart":    chart_data,
             "regime_audit":        regime_audit,
+            "tickers":       request.tickers,
         }
 
         # ── Save to DB ─────────────────────────────────────────────────────

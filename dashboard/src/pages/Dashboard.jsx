@@ -5,6 +5,8 @@ import RegimeChart from "../components/RegimeChart"
 import TradeTable from "../components/TradeTable"
 import ComparisonTable from "../components/ComparisonTable"
 import RegimeAudit from "../components/RegimeAudit"
+import ActivePairs from "../components/ActivePairs"
+
 export default function Dashboard() {
   const [result, setResult] = useState(null)
 
@@ -136,6 +138,7 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
       {/* Regime Audit */}
       {result.regime_audit && (
         <div className="bg-gray-900 rounded-xl p-6">
@@ -143,12 +146,24 @@ export default function Dashboard() {
             STRATEGY × REGIME AUDIT
           </h2>
           <p className="text-xs text-gray-500 mb-4">
-            Which strategy performs best in each regime? 
+            Which strategy performs best in each regime?
             The diagonal should be the highest values if regime assignments are correct.
           </p>
           <RegimeAudit data={result.regime_audit} />
         </div>
       )}
+
+      {/* Active Pairs */}
+      <div className="bg-gray-900 rounded-xl p-6">
+        <h2 className="text-sm font-semibold text-gray-400 mb-1">
+          PAIRS TRADING — ACTIVE PAIRS
+        </h2>
+        <p className="text-xs text-gray-500 mb-4">
+          Pairs active in your universe. Both tickers must be present for a pair to trade.
+          More tickers = more active pairs = better diversification.
+        </p>
+        <ActivePairs tickers={result.tickers || []} />
+      </div>
 
       {/* Trade Table */}
       <div className="bg-gray-900 rounded-xl p-6">

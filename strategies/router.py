@@ -27,7 +27,8 @@ from strategies.mean_reversion import MeanReversionStrategy
 from strategies.trend_filter import TrendFilterStrategy
 from strategies.rsi_divergence import RSIDivergenceStrategy
 from strategies.circuit_breaker import CircuitBreakerStrategy
-
+from strategies.pairs_trading import PairsTradingStrategy
+from strategies.breakout import BreakoutStrategy
 logger = logging.getLogger(__name__)
 
 
@@ -41,8 +42,8 @@ STRATEGY_REGISTRY = {
     # Future additions:
     "rsi_divergence":     RSIDivergenceStrategy,
     "circuit_breaker":CircuitBreakerStrategy,
-    # "breakout":           BreakoutStrategy,
-    # "pairs_trading":      PairsTradingStrategy,
+     "breakout":           BreakoutStrategy,
+     "pairs_trading":      PairsTradingStrategy,
 }
 
 
