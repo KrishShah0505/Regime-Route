@@ -73,3 +73,4 @@ def test_position_sizes_bounded():
     signals = s.entry_signals(features, regimes)
     weights = s.position_size(signals, features, capital=100_000)
     assert (weights.abs() <= 1.0 + 1e-9).all().all()
+
